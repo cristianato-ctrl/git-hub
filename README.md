@@ -11,7 +11,15 @@ anúncio dentro do conjunto de anúncios (ad set) que você escolher. É o recur
 - Lista os posts já publicados na sua conta profissional do Instagram.
 - Lista campanhas e conjuntos de anúncios da sua conta de anúncios.
 - Cria um anúncio a partir de um post existente, dentro do conjunto escolhido.
-  Por segurança o anúncio nasce **PAUSADO** (você revisa e ativa depois).
+- Cria do zero campanha + conjunto (com orçamento e segmentação) + anúncio.
+  Por segurança tudo nasce **PAUSADO** (você revisa e ativa depois).
+
+## Duas formas de usar
+
+- **CLI em Python** (este repositório) — credenciais via `.env`. Veja abaixo.
+- **Workflow do n8n** — se você guarda as credenciais no n8n, use o template
+  pronto em [`n8n/`](n8n/README.md) e importe `n8n/meta-ad-agent.workflow.json`.
+  Ele usa a credencial *Facebook Graph API* do n8n; nenhum token fica no código.
 
 ## Como funciona (por baixo dos panos)
 
@@ -76,6 +84,14 @@ python -m meta_ad_agent promote \
 # Modo interativo: escolhe post e conjunto por menu numerado
 python -m meta_ad_agent promote
 
+# Lançar do zero: campanha + conjunto (orçamento/segmentação) + anúncio
+python -m meta_ad_agent launch \
+  --post 17841400000000000 \
+  --campaign-name "Campanha - Junho" \
+  --adset-name "Conjunto - SP 25-45" \
+  --daily-budget 5000 \
+  --countries BR --age-min 25 --age-max 45
+
 # Criar já ATIVO (padrão é PAUSADO) e pular a confirmação
 python -m meta_ad_agent promote --post ... --adset ... --activate --yes
 ```
@@ -100,6 +116,7 @@ meta_ad_agent/
   ads.py      # campanhas, conjuntos e criação de anúncios a partir de posts
   cli.py      # interface de linha de comando
 tests/        # testes unitários
+n8n/          # workflow do n8n pronto para importar (+ guia)
 ```
 
 ## Avisos

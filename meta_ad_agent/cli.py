@@ -136,6 +136,63 @@ def cmd_promote(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_launch(args: argparse.Namespace) -> int:
+    client, config = _client()
+
+    post_id = args.post
+    if not post_id:
+        items = posts.list_instagram_posts(client, config.ig_user_id, limit=args.limit)
+        if not items:
+            print("Nenhum post do Instagram para promover.")
+            return 1
+        print("Escolha o post do Instagram:")
+        post_id = _pick(
+            "Post nº: ",
+            [(p.id, f"{p.short_caption or p.media_type} — {p.timestamp[:10]}") for p in items],
+        )
+
+    countries = [c.strip().upper() for c in args.countries.split(",") if c.strip()]
+    targeting = ads.build_targeting(
+        countries=countries, age_min=args.age_min, age_max=args.age_max
+    )
+    status = "ACTIVE" if args.activate else "PAUSED"
+
+    if not args.yes:
+        print()
+        print(f"  Post Instagram : {post_id}")
+        print(f"  Campanha       : {args.campaign_name}  (objetivo {args.objective})")
+        print(f"  Conjunto       : {args.adset_name}")
+        print(f"  Orçamento/dia  : {args.daily_budget} centavos")
+        print(f"  Segmentação    : {countries}, idade {args.age_min}-{args.age_max}")
+        print(f"  Status inicial : {status}")
+        if input("Confirmar criação? [s/N] ").strip().lower() not in {"s", "sim", "y"}:
+            print("Cancelado.")
+            return 1
+
+    result = ads.launch_post_campaign(
+        client,
+        config,
+        instagram_media_id=post_id,
+        campaign_name=args.campaign_name,
+        adset_name=args.adset_name,
+        ad_name=args.name or f"Anúncio do post {post_id}",
+        daily_budget_cents=args.daily_budget,
+        objective=args.objective,
+        targeting=targeting,
+        optimization_goal=args.optimization_goal,
+        status=status,
+    )
+    print("\nCampanha criada com sucesso:")
+    print(f"  campaign_id = {result.campaign_id}")
+    print(f"  adset_id    = {result.adset_id}")
+    print(f"  creative_id = {result.creative_id}")
+    print(f"  ad_id       = {result.ad_id}")
+    print(f"  status      = {status}")
+    if status == "PAUSED":
+        print("  (Tudo PAUSADO. Ative no Gerenciador de Anúncios quando quiser.)")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="meta_ad_agent",
@@ -167,6 +224,33 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_prom.add_argument("--yes", "-y", action="store_true", help="Pula a confirmação")
     p_prom.set_defaults(func=cmd_promote)
+
+    p_la = sub.add_parser(
+        "launch", help="Cria campanha + conjunto + anúncio do zero a partir de um post"
+    )
+    p_la.add_argument("--post", help="ID da mídia do Instagram (se omitido, abre menu)")
+    p_la.add_argument("--campaign-name", default="Campanha - Post Instagram")
+    p_la.add_argument("--adset-name", default="Conjunto - Post Instagram")
+    p_la.add_argument("--name", help="Nome do anúncio")
+    p_la.add_argument(
+        "--objective", default="OUTCOME_ENGAGEMENT", help="Objetivo da campanha"
+    )
+    p_la.add_argument(
+        "--optimization-goal", default="POST_ENGAGEMENT", help="Meta de otimização do conjunto"
+    )
+    p_la.add_argument(
+        "--daily-budget", type=int, default=5000,
+        help="Orçamento diário em centavos (padrão 5000 = R$ 50,00)",
+    )
+    p_la.add_argument("--countries", default="BR", help="Países (separados por vírgula)")
+    p_la.add_argument("--age-min", type=int, default=18)
+    p_la.add_argument("--age-max", type=int, default=65)
+    p_la.add_argument("--limit", type=int, default=25)
+    p_la.add_argument(
+        "--activate", action="store_true", help="Cria tudo ATIVO (padrão: PAUSADO)"
+    )
+    p_la.add_argument("--yes", "-y", action="store_true", help="Pula a confirmação")
+    p_la.set_defaults(func=cmd_launch)
 
     return parser
 

@@ -1,0 +1,210 @@
+{
+  "name": "Meta Ad Agent - Promover post do Instagram",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Promover post do Instagram",
+        "formDescription": "Cria campanha + conjunto + anuncio a partir de um post ja publicado no Instagram. Tudo nasce PAUSADO.",
+        "formFields": {
+          "values": [
+            { "fieldLabel": "ID da conta de anuncios", "placeholder": "somente numeros, ex: 1234567890", "requiredField": true },
+            { "fieldLabel": "ID do Instagram", "placeholder": "Instagram User ID", "requiredField": true },
+            { "fieldLabel": "ID do post do Instagram", "placeholder": "IG media id do post a promover", "requiredField": true },
+            { "fieldLabel": "Objetivo da campanha", "placeholder": "OUTCOME_ENGAGEMENT" },
+            { "fieldLabel": "Nome da campanha", "placeholder": "Campanha - Post Instagram" },
+            { "fieldLabel": "Nome do conjunto", "placeholder": "Conjunto - Post Instagram" },
+            { "fieldLabel": "Nome do anuncio", "placeholder": "Anuncio - Post Instagram" },
+            { "fieldLabel": "Orcamento diario em centavos", "placeholder": "5000", "fieldType": "number" },
+            { "fieldLabel": "Paises separados por virgula", "placeholder": "BR" },
+            { "fieldLabel": "Idade minima", "placeholder": "18", "fieldType": "number" },
+            { "fieldLabel": "Idade maxima", "placeholder": "65", "fieldType": "number" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "name": "Formulario",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [0, 300],
+      "webhookId": "meta-ad-agent-form"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "p1", "name": "apiVersion", "type": "string", "value": "v21.0" },
+            { "id": "p2", "name": "accountId", "type": "string", "value": "={{ $json['ID da conta de anuncios'] }}" },
+            { "id": "p3", "name": "igUserId", "type": "string", "value": "={{ $json['ID do Instagram'] }}" },
+            { "id": "p4", "name": "mediaId", "type": "string", "value": "={{ $json['ID do post do Instagram'] }}" },
+            { "id": "p5", "name": "objective", "type": "string", "value": "={{ $json['Objetivo da campanha'] || 'OUTCOME_ENGAGEMENT' }}" },
+            { "id": "p6", "name": "campaignName", "type": "string", "value": "={{ $json['Nome da campanha'] || 'Campanha - Post Instagram' }}" },
+            { "id": "p7", "name": "adsetName", "type": "string", "value": "={{ $json['Nome do conjunto'] || 'Conjunto - Post Instagram' }}" },
+            { "id": "p8", "name": "adName", "type": "string", "value": "={{ $json['Nome do anuncio'] || 'Anuncio - Post Instagram' }}" },
+            { "id": "p9", "name": "dailyBudget", "type": "string", "value": "={{ $json['Orcamento diario em centavos'] || 5000 }}" },
+            { "id": "p10", "name": "countries", "type": "string", "value": "={{ $json['Paises separados por virgula'] || 'BR' }}" },
+            { "id": "p11", "name": "ageMin", "type": "string", "value": "={{ $json['Idade minima'] || 18 }}" },
+            { "id": "p12", "name": "ageMax", "type": "string", "value": "={{ $json['Idade maxima'] || 65 }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "name": "Parametros",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('Parametros').item.json.apiVersion }}/act_{{ $('Parametros').item.json.accountId }}/campaigns",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "name", "value": "={{ $('Parametros').item.json.campaignName }}" },
+            { "name": "objective", "value": "={{ $('Parametros').item.json.objective }}" },
+            { "name": "status", "value": "PAUSED" },
+            { "name": "special_ad_categories", "value": "[]" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000003",
+      "name": "Criar Campanha",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300],
+      "credentials": {
+        "facebookGraphApi": { "id": "REPLACE_WITH_YOUR_CREDENTIAL", "name": "Facebook Graph API account" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('Parametros').item.json.apiVersion }}/act_{{ $('Parametros').item.json.accountId }}/adsets",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "name", "value": "={{ $('Parametros').item.json.adsetName }}" },
+            { "name": "campaign_id", "value": "={{ $('Criar Campanha').item.json.id }}" },
+            { "name": "daily_budget", "value": "={{ $('Parametros').item.json.dailyBudget }}" },
+            { "name": "billing_event", "value": "IMPRESSIONS" },
+            { "name": "optimization_goal", "value": "POST_ENGAGEMENT" },
+            { "name": "bid_strategy", "value": "LOWEST_COST_WITHOUT_CAP" },
+            { "name": "status", "value": "PAUSED" },
+            { "name": "targeting", "value": "={{ JSON.stringify({ geo_locations: { countries: ($('Parametros').item.json.countries || 'BR').split(',').map(c => c.trim()) }, age_min: Number($('Parametros').item.json.ageMin), age_max: Number($('Parametros').item.json.ageMax) }) }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000004",
+      "name": "Criar Conjunto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 300],
+      "credentials": {
+        "facebookGraphApi": { "id": "REPLACE_WITH_YOUR_CREDENTIAL", "name": "Facebook Graph API account" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('Parametros').item.json.apiVersion }}/act_{{ $('Parametros').item.json.accountId }}/adcreatives",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "name", "value": "={{ $('Parametros').item.json.adName }} (criativo)" },
+            { "name": "instagram_user_id", "value": "={{ $('Parametros').item.json.igUserId }}" },
+            { "name": "source_instagram_media_id", "value": "={{ $('Parametros').item.json.mediaId }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000005",
+      "name": "Criar Criativo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 300],
+      "credentials": {
+        "facebookGraphApi": { "id": "REPLACE_WITH_YOUR_CREDENTIAL", "name": "Facebook Graph API account" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('Parametros').item.json.apiVersion }}/act_{{ $('Parametros').item.json.accountId }}/ads",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "name", "value": "={{ $('Parametros').item.json.adName }}" },
+            { "name": "adset_id", "value": "={{ $('Criar Conjunto').item.json.id }}" },
+            { "name": "creative", "value": "={{ JSON.stringify({ creative_id: $('Criar Criativo').item.json.id }) }}" },
+            { "name": "status", "value": "PAUSED" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000006",
+      "name": "Criar Anuncio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 300],
+      "credentials": {
+        "facebookGraphApi": { "id": "REPLACE_WITH_YOUR_CREDENTIAL", "name": "Facebook Graph API account" }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "r1", "name": "campaign_id", "type": "string", "value": "={{ $('Criar Campanha').item.json.id }}" },
+            { "id": "r2", "name": "adset_id", "type": "string", "value": "={{ $('Criar Conjunto').item.json.id }}" },
+            { "id": "r3", "name": "creative_id", "type": "string", "value": "={{ $('Criar Criativo').item.json.id }}" },
+            { "id": "r4", "name": "ad_id", "type": "string", "value": "={{ $('Criar Anuncio').item.json.id }}" },
+            { "id": "r5", "name": "status", "type": "string", "value": "PAUSED" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000007",
+      "name": "Resumo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Meta Ad Agent\n\nPromove um post ja publicado do Instagram como anuncio.\n\n**Antes de usar:**\n1. Em cada node HTTP, selecione sua credencial **Facebook Graph API** (o campo esta como REPLACE_WITH_YOUR_CREDENTIAL).\n2. Confira a versao da API no node **Parametros** (apiVersion).\n3. Tudo nasce **PAUSADO**. Ative no Gerenciador de Anuncios quando quiser.\n\nFluxo: Formulario -> Parametros -> Campanha -> Conjunto -> Criativo -> Anuncio.",
+        "height": 320,
+        "width": 380
+      },
+      "id": "a1000000-0000-4000-8000-000000000008",
+      "name": "Instrucoes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, -60]
+    }
+  ],
+  "connections": {
+    "Formulario": { "main": [[{ "node": "Parametros", "type": "main", "index": 0 }]] },
+    "Parametros": { "main": [[{ "node": "Criar Campanha", "type": "main", "index": 0 }]] },
+    "Criar Campanha": { "main": [[{ "node": "Criar Conjunto", "type": "main", "index": 0 }]] },
+    "Criar Conjunto": { "main": [[{ "node": "Criar Criativo", "type": "main", "index": 0 }]] },
+    "Criar Criativo": { "main": [[{ "node": "Criar Anuncio", "type": "main", "index": 0 }]] },
+    "Criar Anuncio": { "main": [[{ "node": "Resumo", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

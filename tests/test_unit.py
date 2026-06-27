@@ -7,6 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from meta_ad_agent.ads import build_targeting  # noqa: E402
 from meta_ad_agent.config import Config, _load_dotenv  # noqa: E402
 from meta_ad_agent.posts import InstagramPost  # noqa: E402
 
@@ -60,6 +61,21 @@ class PostTests(unittest.TestCase):
     def test_short_caption_collapses_newlines(self):
         post = InstagramPost.from_api({"caption": "linha1\nlinha2"})
         self.assertNotIn("\n", post.short_caption)
+
+
+class TargetingTests(unittest.TestCase):
+    def test_defaults(self):
+        t = build_targeting()
+        self.assertEqual(t["geo_locations"]["countries"], ["BR"])
+        self.assertEqual(t["age_min"], 18)
+        self.assertEqual(t["age_max"], 65)
+        self.assertNotIn("genders", t)
+
+    def test_custom_countries_and_genders(self):
+        t = build_targeting(countries=["US", "BR"], age_min=25, age_max=40, genders=[2])
+        self.assertEqual(t["geo_locations"]["countries"], ["US", "BR"])
+        self.assertEqual(t["genders"], [2])
+        self.assertEqual(t["age_min"], 25)
 
 
 if __name__ == "__main__":
